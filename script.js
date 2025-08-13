@@ -81,7 +81,7 @@ document.getElementById("addBtn").addEventListener("click", () => {
 // Chart instance variable
 let pieChart;
 
-// Update transaction list with filtering & update pie chart and summary
+// Updated updateTransactionList with combined filters:
 function updateTransactionList() {
     let transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
 
@@ -92,41 +92,29 @@ function updateTransactionList() {
     const toDate = document.getElementById("toDate").value;
     const remarksFilter = document.getElementById("filterRemarks")?.value.trim().toLowerCase() || "";
 
-    // Filter logic:
-    // If fromDate or toDate set, filter by those dates (inclusive)
-    // Else filter by month and year if not "All"
-    if(fromDate || toDate){
-        const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
-        const to = toDate ? new Date(toDate + "T23:59:59") : null;
-        transactions = transactions.filter(t => {
-            const tDate = new Date(t.dateTime);
-            if(from && tDate < from) return false;
-            if(to && tDate > to) return false;
-            return true;
-        });
-    } else {
-        if(monthFilter !== "All"){
-            const monthIndex = months.indexOf(monthFilter) - 1; // Because months[0] = All
-            transactions = transactions.filter(t => {
-                const d = new Date(t.dateTime);
-                return d.getMonth() === monthIndex;
-            });
-        }
-        if(yearFilter !== "All"){
-            transactions = transactions.filter(t => {
-                const d = new Date(t.dateTime);
-                return d.getFullYear() == yearFilter;
-            });
-        }
-    }
+    // Prepare Date objects for fromDate and toDate
+    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
 
-    // Remarks filter: filter transactions whose remarks end with filter text
-    if(remarksFilter !== ""){
-        transactions = transactions.filter(t => {
-            const remark = (t.remarks || "").toLowerCase();
-            return remark.endsWith(remarksFilter);
-        });
-    }
+    // Filter applying all conditions together
+    transactions = transactions.filter(t => {
+        const tDate = new Date(t.dateTime);
+        const remark = (t.remarks || "").toLowerCase();
+
+        if (from && tDate < from) return false;
+        if (to && tDate > to) return false;
+
+        if (monthFilter !== "All") {
+            const monthIndex = months.indexOf(monthFilter) - 1; // months[0] = "All"
+            if (tDate.getMonth() !== monthIndex) return false;
+        }
+
+        if (yearFilter !== "All" && tDate.getFullYear() != yearFilter) return false;
+
+        if (remarksFilter !== "" && !remark.includes(remarksFilter)) return false;
+
+        return true;
+    });
 
     // Calculate totals for summary and pie chart
     let totalCredit = 0;
@@ -146,7 +134,6 @@ function updateTransactionList() {
 
     // Update pie chart
     const pieCtx = document.getElementById('pieChart');
-    // Create canvas if doesn't exist
     let pieContainer = document.getElementById('pieChartContainer');
     if(!document.getElementById('pieChart')){
         const canvas = document.createElement('canvas');
