@@ -103,11 +103,12 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script.js"></script>
-<div id="loadingSpinner" class="spinner-overlay" style="display:none;">
-    <div class="spinner"></div>
+<!-- Spinner overlay (added) -->
+<div id="loadingSpinner" class="spinner-overlay" style="display:none;" aria-hidden="true">
+  <div class="spinner" role="status" aria-label="Loading"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
