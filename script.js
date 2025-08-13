@@ -32,7 +32,6 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 // Set default date & time for Add Transaction to current date/time in local ISO format without seconds
-// document.getElementById("dateTime").value = new Date().toISOString().slice(0,16);
 function getISTDateTimeLocal() {
     const now = new Date();
 
@@ -74,7 +73,7 @@ document.getElementById("addBtn").addEventListener("click", () => {
     document.getElementById("type").value = "Credit";
     document.getElementById("amount").value = "";
     document.getElementById("remarks").value = "";
-    document.getElementById("dateTime").value = new Date().toISOString().slice(0,16);
+    document.getElementById("dateTime").value = getISTDateTimeLocal();
 
     alert("Transaction Added!");
 });
@@ -91,6 +90,7 @@ function updateTransactionList() {
     const yearFilter = document.getElementById("filterYear").value;
     const fromDate = document.getElementById("fromDate").value;
     const toDate = document.getElementById("toDate").value;
+    const remarksFilter = document.getElementById("filterRemarks")?.value.trim().toLowerCase() || "";
 
     // Filter logic:
     // If fromDate or toDate set, filter by those dates (inclusive)
@@ -118,6 +118,14 @@ function updateTransactionList() {
                 return d.getFullYear() == yearFilter;
             });
         }
+    }
+
+    // Remarks filter: filter transactions whose remarks end with filter text
+    if(remarksFilter !== ""){
+        transactions = transactions.filter(t => {
+            const remark = (t.remarks || "").toLowerCase();
+            return remark.endsWith(remarksFilter);
+        });
     }
 
     // Calculate totals for summary and pie chart
@@ -176,7 +184,7 @@ function updateTransactionList() {
     if(transactions.length === 0){
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 5;
+        td.colSpan = 6;
         td.style.textAlign = "center";
         td.textContent = "No transactions found";
         tr.appendChild(td);
@@ -235,6 +243,7 @@ document.getElementById("clearFilterBtn").addEventListener("click", () => {
     document.getElementById("filterYear").value = "All";
     document.getElementById("fromDate").value = "";
     document.getElementById("toDate").value = "";
+    document.getElementById("filterRemarks").value = "";
     updateTransactionList();
 });
 
