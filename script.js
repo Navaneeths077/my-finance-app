@@ -1,5 +1,5 @@
 const months = ["All","January","February","March","April","May","June","July","August","September","October","November","December"];
-const currentMonth = new Date().getMonth() + 1; // +1 because index 0 is "All"
+const currentMonth = new Date().getMonth() + 1;
 const currentYear = new Date().getFullYear();
 
 function populateDropdown(id, options, selected) {
@@ -31,31 +31,56 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
-// Set default date & time for Add Transaction to current date/time in local ISO format without seconds
+// Default date & time in IST
 function getISTDateTimeLocal() {
     const now = new Date();
-
-    // Convert current time to UTC + 5:30 (IST)
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const istOffset = 5.5 * 60 * 60000; // 5 hours 30 minutes in milliseconds
+    const istOffset = 5.5 * 60 * 60000;
     const istTime = new Date(utc + istOffset);
-
-    // Format YYYY-MM-DDTHH:mm for datetime-local input
     const year = istTime.getFullYear();
     const month = String(istTime.getMonth() + 1).padStart(2, '0');
     const day = String(istTime.getDate()).padStart(2, '0');
     const hours = String(istTime.getHours()).padStart(2, '0');
     const minutes = String(istTime.getMinutes()).padStart(2, '0');
-
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
-
-// Set default dateTime input value to current IST time
 document.getElementById("dateTime").value = getISTDateTimeLocal();
 
+// --- Google Apps Script Web App URL ---
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx-GoT3gGPq7y46MZTMe_m-QDu8yV4tQT8vLyY7QBVizvYoUCx_tqOBYQek0F5vduZY/exec'; // replace with your Apps Script URL
+
+// Load transactions from Drive
+async function loadTransactionsFromDrive() {
+    try {
+        const res = await fetch(WEB_APP_URL);
+        const data = await res.json();
+        if (data.status === "success") {
+            return data.transactions || [];
+        } else {
+            console.error(data.message);
+            return [];
+        }
+    } catch(err) {
+        console.error(err);
+        return [];
+    }
+}
+
+// Save transactions to Drive
+async function saveTransactionsToDrive(transactions) {
+    try {
+        await fetch(WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify(transactions)
+        });
+    } catch(err) {
+        console.error(err);
+        alert("Error connecting to Drive!");
+    }
+}
 
 // Add Transaction
-document.getElementById("addBtn").addEventListener("click", () => {
+document.getElementById("addBtn").addEventListener("click", async () => {
     const dateTime = document.getElementById("dateTime").value;
     const type = document.getElementById("type").value;
     const amount = parseFloat(document.getElementById("amount").value);
@@ -65,38 +90,34 @@ document.getElementById("addBtn").addEventListener("click", () => {
         return alert("Please fill valid Date/Time, Type and Amount.");
     }
 
-    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+    let transactions = await loadTransactionsFromDrive();
     transactions.push({dateTime, type, amount, remarks});
-    localStorage.setItem("transactions", JSON.stringify(transactions));
+    await saveTransactionsToDrive(transactions);
 
-    // Reset form fields except dateTime (keep current)
     document.getElementById("type").value = "Credit";
     document.getElementById("amount").value = "";
     document.getElementById("remarks").value = "";
     document.getElementById("dateTime").value = getISTDateTimeLocal();
 
     alert("Transaction Added!");
+    updateTransactionList();
 });
 
-// Chart instance variable
+// --- Transaction List & Pie Chart ---
 let pieChart;
 
-// Updated updateTransactionList with combined filters:
-function updateTransactionList() {
-    let transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+async function updateTransactionList() {
+    let transactions = await loadTransactionsFromDrive();
 
-    // Get filter values
     const monthFilter = document.getElementById("filterMonth").value;
     const yearFilter = document.getElementById("filterYear").value;
     const fromDate = document.getElementById("fromDate").value;
     const toDate = document.getElementById("toDate").value;
     const remarksFilter = document.getElementById("filterRemarks")?.value.trim().toLowerCase() || "";
 
-    // Prepare Date objects for fromDate and toDate
     const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
     const to = toDate ? new Date(toDate + "T23:59:59") : null;
 
-    // Filter applying all conditions together
     transactions = transactions.filter(t => {
         const tDate = new Date(t.dateTime);
         const remark = (t.remarks || "").toLowerCase();
@@ -105,7 +126,7 @@ function updateTransactionList() {
         if (to && tDate > to) return false;
 
         if (monthFilter !== "All") {
-            const monthIndex = months.indexOf(monthFilter) - 1; // months[0] = "All"
+            const monthIndex = months.indexOf(monthFilter) - 1;
             if (tDate.getMonth() !== monthIndex) return false;
         }
 
@@ -116,25 +137,17 @@ function updateTransactionList() {
         return true;
     });
 
-    // Calculate totals for summary and pie chart
     let totalCredit = 0;
     let totalDebit = 0;
-
-    transactions.forEach(t => {
-        if(t.type === "Credit") totalCredit += t.amount;
-        else totalDebit += t.amount;
-    });
+    transactions.forEach(t => t.type === "Credit" ? totalCredit += t.amount : totalDebit += t.amount);
 
     const net = totalCredit - totalDebit;
 
-    // Update summary box
     document.getElementById("sumCredit").textContent = `Total Credit: ₹${totalCredit.toFixed(2)}`;
     document.getElementById("sumDebit").textContent = `Total Debit: ₹${totalDebit.toFixed(2)}`;
     document.getElementById("sumNet").textContent = `Net: ₹${Math.abs(net).toFixed(2)} ${net >= 0 ? "Cr" : "Dr"}`;
 
-    // Update pie chart
-    const pieCtx = document.getElementById('pieChart');
-    let pieContainer = document.getElementById('pieChartContainer');
+    const pieContainer = document.getElementById('pieChartContainer');
     if(!document.getElementById('pieChart')){
         const canvas = document.createElement('canvas');
         canvas.id = 'pieChart';
@@ -147,24 +160,10 @@ function updateTransactionList() {
 
     pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
         type: 'pie',
-        data: {
-            labels: ['Credit', 'Debit'],
-            datasets: [{
-                data: [totalCredit, totalDebit],
-                backgroundColor: ['green', 'red'],
-                hoverOffset: 20
-            }]
-        },
-        options: {
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
+        data: { labels: ['Credit','Debit'], datasets: [{ data: [totalCredit, totalDebit], backgroundColor: ['green','red'], hoverOffset:20 }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
     });
 
-    // Clear and populate table
     const tbody = document.getElementById("transactionsList");
     tbody.innerHTML = "";
 
@@ -182,10 +181,7 @@ function updateTransactionList() {
     transactions.forEach((t, idx) => {
         const tr = document.createElement("tr");
         tr.className = t.type.toLowerCase();
-
-        // Date & Time formatted
-        const date = new Date(t.dateTime);
-        const dateStr = date.toLocaleString();
+        const dateStr = new Date(t.dateTime).toLocaleString();
 
         tr.innerHTML = `
             <td>${dateStr}</td>
@@ -198,26 +194,13 @@ function updateTransactionList() {
         tbody.appendChild(tr);
     });
 
-    // Attach delete event listeners
     document.querySelectorAll(".deleteBtn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
+        btn.addEventListener("click", async (e) => {
             const idx = e.target.getAttribute("data-index");
             if(confirm("Are you sure you want to delete this transaction?")){
-                let allTx = JSON.parse(localStorage.getItem("transactions") || "[]");
-
-                const txToRemove = transactions[idx];
-                const realIndex = allTx.findIndex(tx =>
-                    tx.dateTime === txToRemove.dateTime &&
-                    tx.type === txToRemove.type &&
-                    tx.amount === txToRemove.amount &&
-                    tx.remarks === txToRemove.remarks
-                );
-
-                if(realIndex > -1){
-                    allTx.splice(realIndex, 1);
-                    localStorage.setItem("transactions", JSON.stringify(allTx));
-                    updateTransactionList();
-                }
+                transactions.splice(idx, 1);
+                await saveTransactionsToDrive(transactions);
+                updateTransactionList();
             }
         });
     });
