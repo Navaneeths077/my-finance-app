@@ -1,0 +1,97 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f4f4f4;
+}
+header {
+    background: #222;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+}
+header h1 {
+    margin: 0;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+}
+header h1 span {
+    margin-right: 10px;
+    font-size: 24px;
+}
+nav {
+    background: #444;
+    display: flex;
+    padding: 8px;
+}
+nav button {
+    background: #666;
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    margin-right: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+nav button.active {
+    background: #ff9800;
+}
+.container {
+    padding: 20px;
+}
+.section {
+    display: none;
+}
+.section.active {
+    display: block;
+}
+.form-group {
+    margin-bottom: 10px;
+}
+label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+}
+input, select, button {
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    margin-top: 10px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background: #f0f0f0;
+}
+.credit {
+    color: green;
+    font-weight: bold;
+    /* background-color: #d4edda; */
+}
+.debit {
+    color: red;
+    font-weight: bold;
+    /* background-color: #f8d7da; */
+}
+button.deleteBtn {
+    background: #ff4c4c;
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+button.deleteBtn:hover {
+    background: #cc0000;
+}
